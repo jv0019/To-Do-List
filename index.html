@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #E0F8EC;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .app {
+            background: #A3D5AC;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #2C5F2D;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .input-group input,
+        .input-group select,
+        .input-group button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            flex: 1 1 100%;
+        }
+        .input-group button {
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s;
+            flex: 1 1 100%;
+        }
+        .input-group button:hover {
+            background-color: #218838;
+        }
+        #todoList {
+            list-style: none;
+            padding: 0;
+        }
+        #todoList li {
+            background: #fff;
+            margin-bottom: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+            word-wrap: break-word;
+            flex-wrap: wrap;
+        }
+        #todoList li.completed {
+            text-decoration: line-through;
+            color: #999;
+            background-color: #f8f9fa;
+        }
+        #todoList li button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-left: 5px;
+            flex: 1 1 auto;
+            margin-top: 5px;
+        }
+        #todoList li button:hover {
+            background-color: #c82333;
+        }
+        .priority {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .high-priority {
+            color: red;
+        }
+        .medium-priority {
+            color: #ff8a25;
+        }
+        .low-priority {
+            color: #e5de00;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1>To-Do List</h1>
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Add a new task">
+            <select id="priorityInput">
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+            </select>
+            <button onclick="addTask()">Add Task</button>
+        </div>
+        <ul id="todoList"></ul>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', getTasks);
+
+        function getTasks() {
+            fetch('http://127.0.0.1:5000/tasks')
+                .then(response => response.json())
+                .then(tasks => {
+                    const taskList = document.getElementById('todoList');
+                    taskList.innerHTML = '';
+                    tasks.forEach(task => {
+                        const taskItem = createTaskElement(task);
+                        taskList.appendChild(taskItem);
+                    });
+                });
+        }
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const priorityInput = document.getElementById('priorityInput');
+
+            if (taskInput.value.trim() !== '') {
+                fetch('http://127.0.0.1:5000/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        task: taskInput.value,
+                        priority: priorityInput.value,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    getTasks();
+                    taskInput.value = '';
+                });
+            }
+        }
+
+        function completeTask(id) {
+            fetch(`http://127.0.0.1:5000/tasks/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    completed: true,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                getTasks();
+            });
+        }
+
+        function removeTask(id) {
+            fetch(`http://127.0.0.1:5000/tasks/${id}`, {
+                method: 'DELETE',
+            })
+            .then(response => response.json())
+            .then(data => {
+                getTasks();
+            });
+        }
+
+        function createTaskElement(task) {
+            const taskItem = document.createElement('li');
+            taskItem.className = task.completed ? 'completed' : '';
+
+            const taskText = document.createElement('span');
+            taskText.textContent = task.task + ' ';
+
+            const priorityText = document.createElement('span');
+            priorityText.className = 'priority';
+            priorityText.textContent = `(${task.priority})`;
+
+            if (task.priority === 'High') {
+                priorityText.classList.add('high-priority');
+            } else if (task.priority === 'Medium') {
+                priorityText.classList.add('medium-priority');
+            } else if (task.priority === 'Low') {
+                priorityText.classList.add('low-priority');
+            }
+
+            const completeButton = document.createElement('button');
+            completeButton.textContent = 'Complete';
+            completeButton.onclick = () => completeTask(task.id);
+
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove';
+            removeButton.onclick = () => removeTask(task.id);
+
+            taskItem.appendChild(taskText);
+            taskItem.appendChild(priorityText);
+            taskItem.appendChild(completeButton);
+            taskItem.appendChild(removeButton);
+
+            return taskItem;
+        }
+    </script>
+</body>
+</html>
